@@ -11,20 +11,21 @@ struct CDC_160
 	struct FerrantiPhotoelectricReader tapeReader;
 	struct TeletypeModelBRPE tapePunch;
 
-	
+	struct Processor proc;
 
 
 	// IO
-	Word12* inputLines[12];
+	Word12 inputLine;
 	Word12 outputLine;
 	bool functionReadyLine;
 	
+	bool resumeLine;
+
 	bool inputRequestLine;
 
 	bool outputReadyLine;
 
-	void (*tickPeripherals[12])();
-
+	bool selectFailure;
 	/*The External Function instruction places a 12-bit code on the output lines and places a
 									signal on the external function ready line. Upon receiving this signal, all external
 									devices examine the code contained on the output lines. If a device recognizes its external function code, it sends an acknowledgment (resume signal) to the computer,
@@ -39,19 +40,6 @@ struct CDC_160
 								first information read in by an input instruction after a status request.
 								*/
 };
-
-// returns the logical sum of all the input lines (a.k.a the input of the current device)
-inline Word12 CDC_160_SumInputLines(struct CDC_160* cdc) {
-	Word12 v = 0x0;
-
-	for (uint8_t i = 0; i < 12; ++i) {
-		if (cdc->inputLines[i] != NULL) {
-			v |= *(cdc->inputLines[i]);
-		}
-	}
-
-	return v;
-}
 
 inline void CDC_160_Tick(struct CDC_160* cdc160) {
 	TeletypeModelBRPE_Tick(&cdc160->tapePunch, cdc160);

@@ -17,6 +17,7 @@
 // Operates at 60 frames per second.
 struct TeletypeModelBRPE { // https://www.navy-radio.com/manuals/tty/jk/592-802-100-iss3-6403.pdf ?
 	Word12* connectionPort; // pointer to the output line of the CDC 160
+	Word12* inputRequestOut; // pointer to the input request line of the CDC 160
 
 	// the tape that is currently being read from.
 	struct PaperTape1Inch* tape;
@@ -28,16 +29,13 @@ struct TeletypeModelBRPE { // https://www.navy-radio.com/manuals/tty/jk/592-802-
 	bool inputReady; // can only be input ready or output ready
 	bool outputReady;
 	bool isSelected;
-
-
-
-	uint8_t peripheralIdx;
 };
 
 int TeletypeModelBPRE_ConnectToMainframe(struct TeletypeModelBRPE* teletype, struct CDC_160* mainframe);
 
-void TeletypeModelBRPE_PunchCharIntoTape(struct TeletypeModelBRPE* teletype, char c, struct PaperTape1Inch* tape);
+void TeletypeModelBRPE_PunchCharIntoTape(struct TeletypeModelBRPE* teletype, char c);
 
 void TeletypeModelBRPE_Tick(struct TeletypeModelBRPE* teletype, struct CDC_160* mainframe);
 
+void TeletypeModelBPRE_LoadTape(struct TeletypeModelBRPE* teletype, struct PaperTape1Inch* tape);
 #endif // !TELETYPE_MODEL_BRPE_H

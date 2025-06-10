@@ -57,6 +57,10 @@
     <ClInclude Include="src\sleep_ms.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\sleep_us.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cthreads.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c" />
@@ -69,5 +73,6 @@
     <ClCompile Include="src\teletype_model_BRPE.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="cthreads.c" />
   </ItemGroup>
 </Project>

@@ -7,6 +7,10 @@
 #include "twos_and_ones_complement_conversions.h"
 #include "word_12.h"
 #include "word_6.h"
+#include "sleep_ms.h"
+#include "sleep_us.h"
+
+#undef OUT
 
 inline Word6 Word12ToWord6(Word12 word) {
 	return word & 0x3F;
@@ -144,7 +148,7 @@ void JFI(struct Processor* proc);
 
 void INP(struct Processor* proc);
 
-//void OUT(struct Processor* proc);
+void OUT(struct Processor* proc);
 
 void OTN(struct Processor* proc);
 

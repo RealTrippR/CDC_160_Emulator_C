@@ -2,10 +2,8 @@
 #include <assert.h>
 #include "processor.h"
 #include "CDC_160.h"
-#include <windows.h>
-#undef OUT;
 
-#include <time.h>
+#undef OUT;
 
 struct MemBank* mem;
 
@@ -38,6 +36,28 @@ void START(struct Processor* proc) {
     void(*f)(struct Processor*);
     callFunctionTranslator(proc, &f);
     f(proc);
+}
+
+
+/*****************************************************/
+// returns false if a resume input timeout occurred
+bool WAIT_FOR_RESUME(struct Processor* proc) {
+    // wait until input request - this is the connection code
+    for (uint8_t i = 0; i < UINT8_MAX - 1; ++i)
+    {
+        sleepus(6.4); // sleep 1 clock cycle
+
+        if (mainframe->inputRequestLine == true) {
+
+            return true;
+            break;
+        }
+    }
+
+    mainframe->selectFailure = true;
+    HLT(proc);
+
+    return false;
 }
 
 /*****************************************************/
@@ -427,18 +447,43 @@ void callFunctionTranslator(struct Processor* proc, void(**inst_func)(struct Pro
         fTimeUsec = 12.8;
     }
 
-
-
-    if (fTimeUsec != 0.0) {
-        LARGE_INTEGER frequency, start, now;
-        QueryPerformanceFrequency(&frequency);
-        QueryPerformanceCounter(&start);
-
-        LONGLONG wait_ticks = (frequency.QuadPart * fTimeUsec) / 1000000;
-        do {
-            QueryPerformanceCounter(&now);
-        } while ((now.QuadPart - start.QuadPart) < wait_ticks);
+/*****************************************************/
+// Input
+    else if (opCode == INP_E) {
+        *inst_func = INP;
+        fTimeUsec = 12.8;
+        if (mem->data[proc->regP + 2] > mem->data[proc->regP + 1]) {
+            fTimeUsec += 12.8 * (mem->data[proc->regP + 2] - mem->data[proc->regP + 1]);
+        }
     }
+/*****************************************************/
+// Output
+    else if (opCode == OUT_E) {
+        *inst_func = OUT;
+        fTimeUsec = 12.8;
+        if (mem->data[proc->regP + 2] > mem->data[proc->regP + 1]) {
+            fTimeUsec += 12.8 * (mem->data[proc->regP + 2] - mem->data[proc->regP + 1]);
+        }
+    }
+    else if (opCode == OTN_E) {
+        *inst_func = OTN;
+        fTimeUsec = 6.4;
+    }
+    else if (opCode == EXF_E) {
+        *inst_func = EXF;
+        fTimeUsec = 12.8;
+    }
+    else if (opCode == INA_E) {
+        *inst_func = INA;
+        fTimeUsec = 6.4;
+    }
+
+
+
+/*****************************************************/
+if (fTimeUsec != 0.0) {
+    sleepus(fTimeUsec);
+}
 }
 
 /*****************************************************/
@@ -938,6 +983,14 @@ step_four:
     cycleIdx++;
 
     if (senseIsZero == 1) {
+        // add another 1 to regP becuase the instruction is 3 bytes long
+        proc->regB = Add_Word12(proc->regP, 1);
+        proc->regS = proc->regB;
+        proc->regP = proc->regS;
+        // add another 1 to regP becuase the instruction is 3 bytes long
+        proc->regB = Add_Word12(proc->regP, 1);
+        proc->regS = proc->regB;
+        proc->regP = proc->regS;
         RNI(proc);
     } else {
         goto step_four;
@@ -945,11 +998,6 @@ step_four:
 }
 
 void OUT(struct Processor* proc) {
-    assert("inop");
-}
-
-void OTN(struct Processor* proc)
-{
     uint16_t cycleIdx = 0u;
 
     proc->regS++;
@@ -983,10 +1031,28 @@ step_four:
     proc->regA = proc->regB;
 
     if (senseIsZero == 1) {
+        // add another 1 to regP becuase the instruction is 3 bytes long
+        proc->regB = Add_Word12(proc->regP, 1);
+        proc->regS = proc->regB;
+        proc->regP = proc->regS;
+        // add another 1 to regP becuase the instruction is 3 bytes long
+        proc->regB = Add_Word12(proc->regP, 1);
+        proc->regS = proc->regB;
+        proc->regP = proc->regS;
         RNI(proc);
-    } else {
+    }
+    else {
         goto step_four;
     }
+}
+
+void OTN(struct Processor* proc)
+{
+    mainframe->outputLine = E_REG;
+    mainframe->outputReadyLine = true;
+    WAIT_FOR_RESUME(proc);
+    mainframe->outputReadyLine = false;
+    RNI(proc);
 }
 
 /*
@@ -1018,10 +1084,13 @@ void EXF(struct Processor* proc) {
     // external function octal 4220 - input from typewriter
     // external function octal 4240 - request typewriter status
 
-    mainframe->functionReadyLine = true;
     mainframe->outputLine = proc->regZ;
+    mainframe->functionReadyLine = true;
+    
+    WAIT_FOR_RESUME(proc);
 
-
+    mainframe->functionReadyLine = false;
+    RNI(proc);
 
     
     
@@ -1050,8 +1119,11 @@ void EXF(struct Processor* proc) {
 }
 
 void INA(struct Processor* proc) {
+    mainframe->inputRequestLine = true;
+    WAIT_FOR_RESUME(proc);
+
     // <initiate output>
-    /* <on resume> : */ proc->regZ = proc->regB;
+    /* <on resume> : */ proc->regB = proc->regZ;
     proc->regA = proc->regB;
     RNI(proc);
 }

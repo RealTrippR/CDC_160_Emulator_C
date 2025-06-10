@@ -128,6 +128,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="cthreads.h" />
     <ClInclude Include="src\CDC_160.h" />
     <ClInclude Include="src\ferrranti_photoelectric_reader.h" />
     <ClInclude Include="src\function_dur_table.h" />
@@ -138,12 +139,14 @@
     <ClInclude Include="src\paper_tape.h" />
     <ClInclude Include="src\processor.h" />
     <ClInclude Include="src\sleep_ms.h" />
+    <ClInclude Include="src\sleep_us.h" />
     <ClInclude Include="src\teletype_model_BRPE.h" />
     <ClInclude Include="src\twos_and_ones_complement_conversions.h" />
     <ClInclude Include="src\word_12.h" />
     <ClInclude Include="src\word_6.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="cthreads.c" />
     <ClCompile Include="main.c">
       <LanguageStandard_C Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdc11</LanguageStandard_C>
     </ClCompile>
