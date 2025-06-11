@@ -129,6 +129,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="cthreads.h" />
+    <ClInclude Include="src\asmToTape.h" />
     <ClInclude Include="src\CDC_160.h" />
     <ClInclude Include="src\ferrranti_photoelectric_reader.h" />
     <ClInclude Include="src\function_dur_table.h" />
@@ -149,7 +150,10 @@
     <ClCompile Include="cthreads.c" />
     <ClCompile Include="main.c">
       <LanguageStandard_C Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdc11</LanguageStandard_C>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="src\asmToTape.c" />
+    <ClCompile Include="src\ferranti_photoelectric_reader.c" />
     <ClCompile Include="src\paper_tape.c" />
     <ClCompile Include="src\processor.c" />
     <ClCompile Include="src\teletype_model_BRPE.c" />

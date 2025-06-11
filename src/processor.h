@@ -9,6 +9,7 @@
 #include "word_6.h"
 #include "sleep_ms.h"
 #include "sleep_us.h"
+#include <stdbool.h>
 
 #undef OUT
 
@@ -30,6 +31,8 @@ struct Processor
 	Word12 regZ;
 	Word6 regF;
 };
+
+bool WAIT_FOR_RESUME(struct Processor* proc);
 
 void START(struct Processor* proc);
 /*****************************************************/

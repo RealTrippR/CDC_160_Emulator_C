@@ -6,6 +6,10 @@
 #include <stdbool.h>
 struct CDC_160
 {
+	bool on;
+
+	struct MemBank mem;
+
 	// see page 15: https://ia802905.us.archive.org/12/items/bitsavers_cdc160023aingManual1960_4826291/023a_160_Computer_Programming_Manual_1960_text.pdf
 	// The reader and punch are located in the computer and are not considered external equipment.
 	struct FerrantiPhotoelectricReader tapeReader;
@@ -13,6 +17,13 @@ struct CDC_160
 
 	struct Processor proc;
 
+	uint8_t stepMode; //0: run, 1: paused, 2: step one instruction, then pause
+
+	int EnterNoneSweep;
+
+	float margin;
+
+	bool readyToOperate;
 
 	// IO
 	Word12 inputLine;
@@ -41,9 +52,152 @@ struct CDC_160
 								*/
 };
 
-inline void CDC_160_Tick(struct CDC_160* cdc160) {
-	TeletypeModelBRPE_Tick(&cdc160->tapePunch, cdc160);
+inline void CDC_160_TurnOn(struct CDC_160* cdc) {
+	cdc->on = true;
+	cdc->inputLine = false;
+	cdc->inputRequestLine = false;
+	cdc->outputReadyLine = false;
+	cdc->outputLine = false;
+	cdc->resumeLine = false;
+	cdc->selectFailure = false;
+	cdc->readyToOperate = false;
 }
+
+inline bool CDC_160_RunMode(struct CDC_160* cdc) {
+	cdc->stepMode = 0;
+}
+
+inline bool CDC_160_PauseMode(struct CDC_160* cdc) {
+	cdc->stepMode = 1;
+}
+
+inline bool CDC_160_StepMode(struct CDC_160* cdc) {
+	cdc->stepMode = 2;
+}
+
+
+
+inline void CDC_160_Tick(struct CDC_160* cdc) {
+	if (cdc->stepMode == 2) {
+		processorTick(&cdc->proc);
+		CDC_160_PauseMode(cdc);
+	}
+	else if (cdc->stepMode == 0) {
+		processorTick(&cdc->proc);
+
+	}
+}
+
+// returns true if successful
+inline bool CDC_160_PowerOnTapePunch(struct CDC_160* cdc) {
+
+}
+// returns true if successful
+inline bool CDC_160_PowerOffTapePunch(struct CDC_160* cdc) {
+
+}
+
+inline bool CDC_160_PowerOnTapeReader(struct CDC_160* cdc) {
+
+}
+
+inline bool CDC_160_PowerOffTapeReader(struct CDC_160* cdc) {
+
+}
+
+inline bool CDC_160_Load(struct CDC_160* cdc) {
+	if (cdc->on == false) {
+		return false;
+	}
+
+	// note that the computer should stop until the tape is done reading.
+	
+	// see page 61: https://bitsavers.org/pdf/cdc/160/CDC160A/60014500G_CDC160A_Reference_Manual_196503.pdf?utm_source=chatgpt.com
+	// by default, the computer loads programs in a two-frames per word format of 7-level tape,
+	// where the 7th level punch is not part of this data.
+	/*
+	Successive words must follow each other on tape. The automatic load will stop
+	when a frame is read which should contain a 7th level punch and none exists.
+	Tape may be placed in the reader any place on the leader; the automatic load
+	will not begin until the first 7th level punch is sensed. Prior to starting automatic load, the FWA where the data is to be stored must be placed in P, and A
+	should be cleared. When the load is completed, P will contain the LWA where
+	data was stored and A will contain a check sum of the data read, modulus 212-1. */
+
+	// expects 7 level tape
+	if (cdc->tapeReader.tape == NULL || cdc->tapeReader.tapeLevel != 7) {
+		return false;
+	}
+
+	uint32_t frameIndex = 0;
+
+
+	cdc->proc.regS = cdc->proc.regP;
+
+	// TODO: IMPLEMENT READER RETURN CODES
+	while (true) {
+		cdc->functionReadyLine = true;
+		cdc->outputLine = 4102; // ferranti function code.
+		WAIT_FOR_RESUME(cdc);
+		cdc->functionReadyLine = false;
+
+
+
+
+
+		cdc->inputRequestLine = true;
+		WAIT_FOR_RESUME(cdc);
+		cdc->inputRequestLine = false;
+
+		if ((cdc->tapePunch.tape->data[cdc->tapePunch.headPosVert] >> 6) == 0) {
+			cdc->proc.regZ |= (cdc->inputLine < 6) & 0xFC0; // first frame contains higher order bits
+		} else {
+			// this is electrically accurate, it thinks it's on the second frame but is actually on the first
+			cdc->proc.regZ |= cdc->inputLine & 0x3F; // second frame contains lower order bits
+		}
+
+		cdc->inputRequestLine = true;
+		WAIT_FOR_RESUME(cdc);
+		cdc->inputRequestLine = false;
+		cdc->proc.regZ |= cdc->inputLine & 0x3F; // second frame contains lower order bits
+
+		// get 7th bit of 2nd frame.
+		if ((cdc->tapePunch.tape->data[cdc->tapePunch.headPosVert] >> 6) == 0) {
+			// stop: there is no 7th level punch.
+			break;
+
+		}
+
+		// increment S & P reg
+		cdc->proc.regB = Add_Word12(cdc->proc.regP, 1);
+		cdc->proc.regS = cdc->proc.regB;
+		cdc->proc.regP = cdc->proc.regS;
+	}
+
+	HLT(&cdc->proc);
+	return true;
+}
+
+// returns true if successful
+inline bool CDC_160_Clear(struct CDC_160* cdc) {
+	if (cdc->on == false) {
+		return false;
+	}
+	// "Placing this switch in the CLEAR position causes the registers to be reset to zero. 
+	// Core storage is unchanged by the clear operation."
+	
+	cdc->proc.regA = 0;
+	cdc->proc.regB = 0;
+	cdc->proc.regF = 0;
+	cdc->proc.regP = 0;
+	cdc->proc.regS = 0;
+	cdc->proc.regZ = 0;
+	//memset(cdc->mem.data, 0, sizeof(cdc->mem.data));
+
+	cdc->readyToOperate = true;
+
+	return true;
+}
+
 
 inline void writeASM_CTRL_INSTR(Word12* dst, enum ControlInstruction inst) {
 	if (inst == HALT) {

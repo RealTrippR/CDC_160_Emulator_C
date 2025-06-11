@@ -9,15 +9,15 @@ struct MemBank* mem;
 
 struct CDC_160* mainframe;
 
-void SET_MAINFRAME(struct CDC_160* _mainframe) {
-    mainframe = _mainframe;
-}
-
 void SET_MEM_BANK(struct MemBank* membank) {
     mem = membank;
     mem->data[0] = 07001; // see page 46: https://ia802905.us.archive.org/12/items/bitsavers_cdc160023aingManual1960_4826291/023a_160_Computer_Programming_Manual_1960_text.pdf
 }
 
+void SET_MAINFRAME(struct CDC_160* _mainframe) {
+    mainframe = _mainframe;
+    SET_MEM_BANK(&mainframe->mem);
+}
 
 void READ(struct Processor* proc) {
     proc->regZ = mem->data[proc->regS];
@@ -170,25 +170,25 @@ void callFunctionTranslator(struct Processor* proc, void(**inst_func)(struct Pro
     float fTimeUsec = 0.0;
 
     // handle primary asm instructions
-    proc->regF = Word12ToWord6(ShiftRight_Word12(proc->regZ, ToOnesComplement(6)));
+    proc->regF = Word12ToWord6(ShiftRight_Word12(proc->regZ, 6));
     enum FunctionCode opCode = ToTwosComplement(proc->regF);
-
-    if (proc->regZ == 0b000001000001) {
-        *inst_func = PTA;
-        fTimeUsec = 6.4;
-
-        opCode = UINT16_MAX;  // skip but wait
-    }
    
     if (opCode == ERR_E) {
         *inst_func = ERR;
         fTimeUsec = 6.4;
-    } else if (opCode == HLT_E) {
+    }
+    else if (opCode == HLT_E) {
         *inst_func = HLT;
         fTimeUsec = 6.4;
+    
 /*****************************************************/
+// PTA control command
+    } else if (proc->regZ == 0b000001000001) {
+        *inst_func = PTA;
+        fTimeUsec = 6.4;
+    }
 // Shift Left
-    } else if (opCode == SHA_E) {
+    else if (opCode == SHA_E) {
         *inst_func = SHA;
         fTimeUsec = 6.4;
     }
@@ -528,14 +528,16 @@ void HLT(struct Processor* proc) {
 /*****************************************************/
 // Shift A
 void SHA(struct Processor* proc) {
-    if (E_REG == 0102) {
-        proc->regA = ShiftLeft_Word12(proc->regA, ToOnesComplement(0));
+    // this function is unique because the codes here are dependent upon 
+    // the contents of the Z register, because they include the function code 01 (SHA).
+    if (proc->regZ == 0102) {
+        proc->regA = RotateLeft_Word12(proc->regA, 1);
     }
-    else if (E_REG == 0110) {
-        proc->regA = ShiftLeft_Word12(proc->regA, ToOnesComplement(3));
+    else if (proc->regZ == 0110) {
+        proc->regA = RotateLeft_Word12(proc->regA, 3);
     }
-    else if (E_REG == 0112) {
-        proc->regA = ShiftLeft_Word12(proc->regA, ToOnesComplement(12));
+    else if (proc->regZ == 0112) {
+        proc->regA = Mult_Word12(proc->regA, 012);
     }
     else {
         ERR(proc);
@@ -574,32 +576,32 @@ void LPB(struct Processor* proc) {
 /*****************************************************/
 // Logical Sum
 void LSN(struct Processor* proc) {
-    proc->regA = BitwiseAnd_Word12(E_REG, proc->regA);
+    proc->regA = BitwiseOR_Word12(E_REG, proc->regA);
     RNI(proc);
 }
 
 void LSD(struct Processor* proc) {
     readDirect(proc);
-    proc->regA = BitwiseXOR_Word12(proc->regZ, proc->regA);
+    proc->regA = BitwiseOR_Word12(proc->regZ, proc->regA);
     RNI(proc);
 }
 
 void LSI(struct Processor* proc) {
     readIndirect(proc);
-    proc->regA = BitwiseXOR_Word12(proc->regZ, proc->regA);
+    proc->regA = BitwiseOR_Word12(proc->regZ, proc->regA);
     RNI(proc);
 }
 
 
 void LSF(struct Processor* proc) {
     readRelForward(proc);
-    proc->regA = BitwiseXOR_Word12(proc->regZ, proc->regA);
+    proc->regA = BitwiseOR_Word12(proc->regZ, proc->regA);
     RNI(proc);
 }
 
 void LSB(struct Processor* proc) {
     readRelBackward(proc);
-    proc->regA = BitwiseXOR_Word12(proc->regZ, proc->regA);
+    proc->regA = BitwiseOR_Word12(proc->regZ, proc->regA);
     RNI(proc);
 }
 
@@ -929,9 +931,10 @@ void NJB(struct Processor* proc) {
 /*****************************************************/
 // Indirect Jump (70) - https://homepage.cs.uiowa.edu/~jones/cdc160/man/jump.html
 void JPI(struct Processor* proc) {
-    proc->regB = E_REG;
-    proc->regZ = proc->regB;
+    proc->regZ = E_REG | 1;
+    proc->regB = proc->regZ;
     proc->regA = proc->regB;
+    proc->regZ = proc->regB;
 }
 
 /*****************************************************/

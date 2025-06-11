@@ -52,6 +52,24 @@ inline Word12 ShiftLeft_Word12(Word12 word, Word12 shl)
 	return (word << shl) & 0xFFF;
 };
 
+inline Word12 Mult_Word12(Word12 wordA, Word12 wordB) {
+	return (wordA * wordB) & 0xFFF;
+
+}
+
+// indentical to Shift Right, except end around wrapping occurs.
+inline Word12 RotateRight_Word12(Word12 word, Word12 rr) {
+	rr &= 0xFFF;
+	return ((word << rr) | (word >> (12 - rr))) & 0xFFF;
+}
+
+// indentical to Shift Left, except end around wrapping occurs.
+inline Word12 RotateLeft_Word12(Word12 word, Word12 ll) {
+	ll &= 0xFFF;
+	return ((word << ll) | (word >> (12 - ll))) & 0xFFF;
+}
+
+
 inline Word12 ShiftRight_Word12(Word12 word, Word12 shr)
 {
 	return (word >> shr) & 0xFFF;

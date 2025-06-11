@@ -9,7 +9,6 @@
 #include "word_12.h"
 
 struct MemBank {
-	uint16_t size;
 	Word12 data[4096];
 };
 

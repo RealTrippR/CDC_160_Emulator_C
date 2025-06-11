@@ -19,7 +19,7 @@ struct TeletypeModelBRPE { // https://www.navy-radio.com/manuals/tty/jk/592-802-
 	Word12* connectionPort; // pointer to the output line of the CDC 160
 	Word12* inputRequestOut; // pointer to the input request line of the CDC 160
 
-	// the tape that is currently being read from.
+	// the tape that is currently being written to.
 	struct PaperTape1Inch* tape;
 	// the current bit position of the tape that is being written
 	uint8_t headPosHorz;

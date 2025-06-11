@@ -41,7 +41,7 @@ void TeletypeModelBRPE_Tick(struct TeletypeModelBRPE* teletype, struct CDC_160* 
 		const Word12 FUNCTION_DESIGNATOR = mainframe->outputLine & 0x77;
 		const Word12 FUNCTION_CODE = mainframe->outputLine;
 		if (FUNCTION_CODE == 04104) {
-			teletype->isSelected = true;
+			mainframe->resumeLine = false;
 
 			mainframe->inputRequestLine = true;
 
@@ -55,9 +55,12 @@ void TeletypeModelBRPE_Tick(struct TeletypeModelBRPE* teletype, struct CDC_160* 
 				mainframe->inputLine |= 02000;
 			}
 
+			teletype->isSelected = true;
+
 			mainframe->resumeLine = true;
 		}
 		else {
+			mainframe->resumeLine = false;
 			teletype->isSelected = false;
 			return;
 		}
