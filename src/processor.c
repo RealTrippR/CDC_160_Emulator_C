@@ -29,8 +29,7 @@ void WRITE(struct Processor* proc) {
 
 
 void START(struct Processor* proc) {
-    proc->regP = mem->data[1];
-    proc->regS = mem->data[1];
+    proc->regS = proc->regP;
     READ(proc);
 
     void(*f)(struct Processor*);
@@ -43,7 +42,7 @@ void START(struct Processor* proc) {
 // returns false if a resume input timeout occurred
 bool WAIT_FOR_RESUME(struct Processor* proc) {
     // wait until input request - this is the connection code
-    for (uint8_t i = 0; i < UINT8_MAX - 1; ++i)
+    for (uint32_t i = 0; i < 39062/*approx 250 ms, which is the timeout for peripherals*/; ++i)
     {
         sleepus(6.4); // sleep 1 clock cycle
 
@@ -127,14 +126,14 @@ void writeIndirect(struct Processor* proc) {
 }
 
 void writeRelForward(struct Processor* proc) {
-    proc->regB = Add_Word12(proc->regP, proc->regZ);
+    proc->regB = Add_Word12(proc->regP, E_REG);
     proc->regS = proc->regB;
     
     WRITE(proc);
 }
 
 void writeRelBackward(struct Processor* proc) {
-    proc->regB = Sub_Word12(proc->regP, proc->regZ);
+    proc->regB = Sub_Word12(proc->regP, E_REG);
     proc->regS = proc->regB;
 
     WRITE(proc);
@@ -669,54 +668,64 @@ void LCB(struct Processor* proc) {
 /*****************************************************/
 // Add
 void ADN(struct Processor* proc) {
-    proc->regA = Add_Word12(E_REG, proc->regA);
+    proc->regB = Add_Word12(E_REG, proc->regA);
+    proc->regA = proc->regB;
     RNI(proc);
 }
 void ADD(struct Processor* proc) {
     readDirect(proc);
-    proc->regA = Add_Word12(proc->regZ, proc->regA);
+    proc->regB = Add_Word12(proc->regZ, proc->regA);
+    proc->regA = proc->regB;
     RNI(proc);
 }
 void ADI(struct Processor* proc) {
     readIndirect(proc);
-    proc->regA = Add_Word12(proc->regZ, proc->regA);
+    proc->regB = Add_Word12(proc->regZ, proc->regA);
+    proc->regA = proc->regB;
     RNI(proc);
 }
 void ADF(struct Processor* proc) {
     readRelForward(proc);
-    proc->regA = Add_Word12(proc->regZ, proc->regA);
+    proc->regB = Add_Word12(proc->regZ, proc->regA);
+    proc->regA = proc->regB;
     RNI(proc);
 }
 void ADB(struct Processor* proc) {
     readRelBackward(proc);
-    proc->regA = Add_Word12(proc->regZ, proc->regA);
+    proc->regB = Add_Word12(proc->regZ, proc->regA);
+    proc->regA = proc->regB;
     RNI(proc);
 }
 
 /*****************************************************/
 // Subtract
 void SBN(struct Processor* proc) {
-    proc->regA = Sub_Word12(proc->regA, E_REG);
+    proc->regB = Sub_Word12(proc->regA, proc->regZ);
+    proc->regA = proc->regB;
     RNI(proc);
 }
 void SBD(struct Processor* proc) {
     readDirect(proc);
-    proc->regA = Sub_Word12(proc->regB, proc->regZ);
+    proc->regB = Sub_Word12(proc->regA, proc->regZ);
+    proc->regA = proc->regB;
     RNI(proc);
 }
 void SBI(struct Processor* proc) {
     readIndirect(proc);
-    proc->regA = Sub_Word12(proc->regB, proc->regZ);
+    proc->regB = Sub_Word12(proc->regA, proc->regZ);
+    proc->regA = proc->regB;
     RNI(proc);
 }
 void SBF(struct Processor* proc) {
     readRelForward(proc);
-    proc->regA = Sub_Word12(proc->regB, proc->regZ);
+    proc->regB = Sub_Word12(proc->regA, proc->regZ);
+    proc->regA = proc->regB;
     RNI(proc);
 }
 void SBB(struct Processor* proc) {
     readRelBackward(proc);
-    proc->regA = Sub_Word12(proc->regB, proc->regZ);
+    proc->regB = Sub_Word12(proc->regA, proc->regZ);
+    proc->regA = proc->regB;
     RNI(proc);
 }
 
@@ -741,13 +750,13 @@ void STI(struct Processor* proc) {
     RNI(proc);
 }
 void STF(struct Processor* proc) {
-    proc->regB = Add_Word12(proc->regP, proc->regZ);
+    proc->regB = Add_Word12(proc->regP, E_REG);
     proc->regS = proc->regB;
     STA(proc);
     RNI(proc);
 }
 void STB(struct Processor* proc) {
-    proc->regB = Sub_Word12(proc->regP, proc->regZ);
+    proc->regB = Sub_Word12(proc->regP, E_REG);
     proc->regS = proc->regB;
     STA(proc);
     RNI(proc);

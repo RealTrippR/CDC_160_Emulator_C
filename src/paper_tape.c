@@ -69,8 +69,8 @@ bool PaperTape1Inch_SaveToDisk(struct PaperTape1Inch* tape, const char* filename
 		char num[10];
 		intToStr(tape->level, num, sizeof(num));
 		fwrite("<tape level:", 1, 13, fptr);
-		fwrite(num, 0, 9, fptr);
-		fwrite(">",0,1,fptr);
+		fwrite(num, 1, strlen(num), fptr);
+		fwrite(">",1,1,fptr);
 		fwrite(tape->data, 1, tape->rowCount, fptr);
 		
 		fclose(fptr);
@@ -110,6 +110,11 @@ bool PaperTape1Inch_ReadFromDisk(struct PaperTape1Inch* tape, const char* filena
 
 		rewind(fptr);
 
+		while (fptr != '>')
+		{
+			fseek(fptr, 1, SEEK_CUR);
+		}
+		fseek(fptr, 1, SEEK_CUR);
 
 		char* buff = malloc(fsize);
 		if (!buff) {
@@ -146,7 +151,7 @@ void PaperTape1Inch_Create(struct PaperTape1Inch* tape, uint32_t lengthInInches)
 	tape->rowCount = (lengthInInches) * 10; // 10 rows per inch
 	tape->data = malloc(tape->rowCount); // max of 8 holes per row
 
-	memset(tape->data, 0, tape->rowCount);
+	memset(tape->data, 1, tape->rowCount); // by default, it isn't punched
 }
 
 void PaperTape1Inch_Destroy(struct PaperTape1Inch* tape) {

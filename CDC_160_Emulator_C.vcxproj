@@ -104,6 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard_C>stdc11</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,13 +151,17 @@
     <ClCompile Include="cthreads.c" />
     <ClCompile Include="main.c">
       <LanguageStandard_C Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdc11</LanguageStandard_C>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="src\asmToTape.c" />
     <ClCompile Include="src\ferranti_photoelectric_reader.c" />
     <ClCompile Include="src\paper_tape.c" />
     <ClCompile Include="src\processor.c" />
     <ClCompile Include="src\teletype_model_BRPE.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="exampleASM\Routine1.asm" />
+    <None Include="exampleASM\Routine1.asm.tape" />
+    <None Include="exampleASM\Routine2.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

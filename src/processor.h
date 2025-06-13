@@ -35,6 +35,11 @@ struct Processor
 bool WAIT_FOR_RESUME(struct Processor* proc);
 
 void START(struct Processor* proc);
+
+void WRITE(struct Processor* proc);
+
+void READ(struct Processor* proc);
+
 /*****************************************************/
 
 void printRegisters(struct Processor* proc);

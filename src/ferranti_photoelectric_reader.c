@@ -17,7 +17,7 @@ bool FerrantiPhotoelectricReader_SetTapeLevel(struct FerrantiPhotoelectricReader
 bool FerrantiPhotoElectricReader_ReadNextFrame(struct FerrantiPhotoelectricReader* tapeReader, struct CDC_160* mainframe)
 {
 	tapeReader->notReady = true;
-	if (tapeReader->tape == NULL || tapeReader->notReady) {
+	if (tapeReader->tape == NULL) {
 		return false;
 	}
 	for (uint16_t i = 0; i < tapeReader->tapeLevel; ++i)
@@ -26,18 +26,19 @@ bool FerrantiPhotoElectricReader_ReadNextFrame(struct FerrantiPhotoelectricReade
 		if (tapeReader->headPosHorz == tapeReader->tapeLevel) {
 			tapeReader->headPosHorz = 0;
 		}
-		mainframe->inputLine |= tapeReader->tape->data[tapeReader->headPosVert] & (1 << tapeReader->headPosHorz);
+		//mainframe->inputLine |= tapeReader->tape->data[tapeReader->headPosVert] & (1 << tapeReader->headPosHorz);
 	}
 
-	mainframe->inputRequestLine = true;
+	mainframe->inputLine |= tapeReader->tape->data[tapeReader->headPosVert] & 0x3F;
+#ifndef NDEBUG
+	const char dbgc = tapeReader->tape->data[tapeReader->headPosVert] & 0x3F;
 
-
+#endif // !NDEBUG
 	sleepms(171);
 
 	tapeReader->headPosVert++;
 
 	tapeReader->notReady = false;
-
 	return true;
 }
 
@@ -65,6 +66,9 @@ void FerrantiPhotoelectricReader_Tick(struct FerrantiPhotoelectricReader* tapeRe
 				}
 				else if (tapeReader->headPosVert == tapeReader->tape->rowCount) {
 					mainframe->inputLine |= 02000;
+				}
+				else {
+					tapeReader->isSelected = true;
 				}
 
 				mainframe->resumeLine = true;

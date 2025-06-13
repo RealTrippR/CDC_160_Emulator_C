@@ -97,8 +97,11 @@ enum FunctionCode
     /**********************/
     EXF_E = 075,
     /**********************/
-    INA_E = 076
+    INA_E = 076,
     /**********************/
+
+
+    INVALID_CODE_E = 0100
 };
 
 #endif // !CDC_OP_CODE_ENUM_H

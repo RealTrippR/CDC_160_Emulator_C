@@ -61,6 +61,8 @@ inline void CDC_160_TurnOn(struct CDC_160* cdc) {
 	cdc->resumeLine = false;
 	cdc->selectFailure = false;
 	cdc->readyToOperate = false;
+
+	cdc->tapeReader.tapeLevel = 7;
 }
 
 inline bool CDC_160_RunMode(struct CDC_160* cdc) {
@@ -73,6 +75,42 @@ inline bool CDC_160_PauseMode(struct CDC_160* cdc) {
 
 inline bool CDC_160_StepMode(struct CDC_160* cdc) {
 	cdc->stepMode = 2;
+}
+
+
+inline void CDC_160_SetRegA(struct CDC_160* cdc, Word12 regA)
+{
+	cdc->proc.regA = regA & 0xFFF;
+}
+inline void CDC_160_SetRegP(struct CDC_160* cdc, Word12 regP)
+{
+	cdc->proc.regP = regP & 0xFFF;
+}
+inline void CDC_160_SetRegB(struct CDC_160* cdc, Word12 regB)
+{
+	cdc->proc.regB = regB & 0xFFF;
+}
+
+
+inline void CDC_160_FlipBitRegP(struct CDC_160* cdc, uint8_t bit) 
+{
+	if (bit > 11) {return;}
+	Word12 mask = 1 << bit;
+	cdc->proc.regP ^= mask;
+}
+
+inline void CDC_160_FlipBitRegA(struct CDC_160* cdc, uint8_t bit)
+{
+	if (bit > 11) { return; }
+	Word12 mask = 1 << bit;
+	cdc->proc.regA ^= mask;
+}
+
+inline void CDC_160_FlipBitRegZ(struct CDC_160* cdc, uint8_t bit)
+{
+	if (bit > 11) { return; }
+	Word12 mask = 1 << bit;
+	cdc->proc.regZ ^= mask;
 }
 
 
@@ -135,36 +173,49 @@ inline bool CDC_160_Load(struct CDC_160* cdc) {
 
 	// TODO: IMPLEMENT READER RETURN CODES
 	while (true) {
+		cdc->proc.regZ = 0x0;
+		cdc->proc.regB = 0x0;
+
 		cdc->functionReadyLine = true;
-		cdc->outputLine = 4102; // ferranti function code.
+		cdc->outputLine = 04102; // ferranti function code.
 		WAIT_FOR_RESUME(cdc);
 		cdc->functionReadyLine = false;
 
 
-
-
-
+		cdc->inputLine = 0x0;
 		cdc->inputRequestLine = true;
 		WAIT_FOR_RESUME(cdc);
 		cdc->inputRequestLine = false;
 
-		if ((cdc->tapePunch.tape->data[cdc->tapePunch.headPosVert] >> 6) == 0) {
-			cdc->proc.regZ |= (cdc->inputLine < 6) & 0xFC0; // first frame contains higher order bits
-		} else {
-			// this is electrically accurate, it thinks it's on the second frame but is actually on the first
-			cdc->proc.regZ |= cdc->inputLine & 0x3F; // second frame contains lower order bits
-		}
+		// load first frame into register B
+		cdc->proc.regZ |= (cdc->inputLine << 6); // first frame contains higher order bits
+		cdc->proc.regB = cdc->proc.regZ;
+		
 
+
+		cdc->functionReadyLine = true;
+		cdc->outputLine = 04102; // ferranti function code.
+		WAIT_FOR_RESUME(cdc);
+		cdc->functionReadyLine = false;
+
+		// request 2nd frame
+		cdc->inputLine = 0x0;
 		cdc->inputRequestLine = true;
 		WAIT_FOR_RESUME(cdc);
+		cdc->proc.regZ = cdc->inputLine;
 		cdc->inputRequestLine = false;
+
+		// load second frame and OR it with first
 		cdc->proc.regZ |= cdc->inputLine & 0x3F; // second frame contains lower order bits
+		cdc->proc.regZ |= cdc->proc.regB;
+		cdc->proc.regA = cdc->proc.regZ;
+
+		WRITE(&cdc->proc);
 
 		// get 7th bit of 2nd frame.
-		if ((cdc->tapePunch.tape->data[cdc->tapePunch.headPosVert] >> 6) == 0) {
+		if ((cdc->tapeReader.tape->data[cdc->tapeReader.headPosVert] >> 6) == 0) {
 			// stop: there is no 7th level punch.
 			break;
-
 		}
 
 		// increment S & P reg

@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <time.h>
 #include "src/CDC_160.h"
+#include "src/asmToTape.h"
+
 #include <threads.h>
 
-void runTeletype(struct CDC_160* mainframe) {
+ void runTeletype(struct CDC_160* mainframe) {
 	while (1) {
 		TeletypeModelBRPE_Tick(&mainframe->tapePunch, mainframe);
 	}
@@ -11,7 +13,7 @@ void runTeletype(struct CDC_160* mainframe) {
 
 void readTapeReader(struct CDC_160* mainframe) {
 	while (1) {
-		FerrantiPhotoelectricReader_Tick(&mainframe->tapePunch, mainframe);
+		FerrantiPhotoelectricReader_Tick(&mainframe->tapeReader, mainframe);
 	}
 }
  
@@ -25,19 +27,34 @@ int main()
 	SET_MAINFRAME(&mainframe);
 
 	CDC_160_TurnOn(&mainframe);
+	CDC_160_Clear(&mainframe);
 
 
+	// Start peripheral devices
+	thrd_t threadTT;
+	thrd_create(&threadTT, runTeletype, &mainframe);
+	thrd_detach(threadTT);
+
+	thrd_t threadTR;
+	thrd_create(&threadTR, readTapeReader, &mainframe);
+	thrd_detach(threadTR);
 
 	// Load paper tape
 	struct PaperTape1Inch tape = { 0 };
-	PaperTape1Inch_Create(&tape, 50);
-	TeletypeModelBPRE_LoadTape(&mainframe.tapePunch, &tape);
+	asmToTape(&tape, "exampleASM\\Routine1.asm");
+
+	// Save tape to disk
+	//PaperTape1Inch_SaveToDisk(&tape, "exampleASM\\Routine1.asm.tape");
+
+	mainframe.tapeReader.tape = &tape;
+	CDC_160_Load(&mainframe);
 
 
-	// all addressees here are in decimal
+	//PaperTape1Inch_Create(&tape, 50);
+	//TeletypeModelBPRE_LoadTape(&mainframe.tapePunch, &tape);
 
-	struct MemBank mem = mainframe.mem;
 
+	/*
 	mem.data[1] = 8; // mem[1] is the entry point of the program
 	// addresses 2-7 should be used for subroutine exits (but don't have to be)
 	// mem.data+8 is the counter location (CT), but also the first instruction (smashed to save space)
@@ -65,25 +82,17 @@ int main()
 	writeASM_CTRL_INSTR(mem.data + 30, P_TO_A); 
 	writeASM(mem.data + 31, EXF_E, 10);
 	writeASM(mem.data + 32, LCN_E, 012);
-
-
-	//mem.data[41] = 04104;
 	
 	writeASM(mem.data + 32, OTN_E, 07); // write 07 to punch tape
 	writeASM(mem.data + 33, INA_E, 00); // Read to A register
 	
 	writeASM_CTRL_INSTR(mem.data + 34, HALT);
+	*/
 
-
-	mainframe.mem = mem;
+	CDC_160_SetRegP(&mainframe, 00); // set starting address of program
 
 	START(&mainframe.proc);
 
-
-	thrd_t thread;
-	thrd_create(&thread, runTeletype, &mainframe);
-	thrd_detach(thread);
-	
 
 	while (1)
 	{
