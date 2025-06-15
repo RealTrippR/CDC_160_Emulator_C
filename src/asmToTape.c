@@ -35,14 +35,30 @@ struct TokenizedLine {
 	struct Token tokens[3];
 };
 
+int getTokenCountOfTokenizedLine(struct TokenizedLine* line) 
+{
+	int c = 0;
+	if (line->tokens[0].type != NONE) {
+		c++;
+	}
+	if (line->tokens[1].type != NONE) {
+		c++;
+	}
+	if (line->tokens[1].type != NONE) {
+		c++;
+	}
+	return c;
+}
+
 
 int atoOn(const char* str, size_t len) {
 	int result = 0;
 	int sign = 1;
 	size_t i = 0;
 
-	// Skip leading whitespace
-	while (i < len && isspace((unsigned char)str[i])) {
+	// Skip leading whitespace and 9s
+	while (i < len && (isspace((unsigned char)str[i]) || str[i] == '0')) 
+	{
 		i++;
 	}
 
@@ -136,7 +152,13 @@ size_t trimSpaces(char* dstBuff, const size_t dstBuffSze, const char* srcBuff, c
 		}
 	}
 
-	j--;
+	if (j == 0) {
+		return 0;
+	}
+	else {
+		j--;
+	}
+	
 	dstBuff[j] = '\0';
 
 	for (j; j > 0; --j) {
@@ -474,7 +496,8 @@ enum TokenType getTokenTypeOfWord(const char* word, size_t wordLen, Word12* fVal
 }
 
 
-void TokenizedLine_Create(struct TokenizedLine* TL, const char* line, size_t lineIdx, size_t lineLen) {
+void TokenizedLine_Create(struct TokenizedLine* TL, const char* line, size_t lineIdx, size_t lineLen) 
+{
 
 	Token_New(&(TL->tokens[0]));
 	Token_New(&(TL->tokens[1]));
@@ -513,6 +536,16 @@ void TokenizedLine_Create(struct TokenizedLine* TL, const char* line, size_t lin
 			wordSize++;
 		}
 	}
+
+
+
+	for (uint16_t i = 0; i < 3-1; ++i) {
+		if (TL->tokens[i].type == NONE && TL->tokens[i+1].type != NONE) {
+			TL->tokens[i] = TL->tokens[i + 1];
+			TL->tokens[i + 1].type = NONE;
+		}
+	}
+
 }
 
 
@@ -541,10 +574,27 @@ bool asmToTape(const struct PaperTape1Inch* tape, const char* dstFilename)
 
 		fclose(fptr);
 
-		size_t fLineCount = 0;
+
+		// counts the number of lines, where a line is defined as
+		// a block of data seperated by a null-terminator or newline character, where the size of the line, excluding comments, is greater than 0.
+		size_t srcLineCount = 0; // includes blank or commented out lines
+		size_t fLineCount = 0; // does not include blank or commented out lines
+		size_t lsze = 0;
+		bool c = false;
 		for (size_t i = 0; i < fsize; ++i) {
+			if (srcCode[i] == ';') { /*ignore comments*/
+				c = true;
+			}
+			if (c == false && !(isspace((unsigned char)srcCode[i]))) {
+				lsze++;
+			}
 			if (srcCode[i] == '\n' || i == fsize-1) {
-				fLineCount++;
+				srcLineCount++;
+				if (lsze > 0) {
+					fLineCount++;
+				}
+				c = false;
+				lsze = 0;
 			}
 		}
 
@@ -554,14 +604,16 @@ bool asmToTape(const struct PaperTape1Inch* tape, const char* dstFilename)
 		size_t lineLen = 0;
 
 		struct TokenizedLine* tokenizedLines = malloc(sizeof(struct TokenizedLine) * fLineCount + 1);
-		size_t tokenizedLinesCount = fLineCount;
+		memset(tokenizedLines, 0, sizeof(struct TokenizedLine) * fLineCount + 1);
+		size_t tokenizedLinesCount = 0;
 
 		if (!tokenizedLines) {
 			return false;
 		}
 
+		size_t li = 0;
 		// read src code line by line
-		for (size_t li = 0; li < fLineCount; ++li) {
+		for (size_t i = 0; i < srcLineCount; ++i) {
 
 			// get end of line
 			for (uint32_t ci = 0; ci < UINT16_MAX; ci++) {
@@ -573,17 +625,21 @@ bool asmToTape(const struct PaperTape1Inch* tape, const char* dstFilename)
 			size_t srcLineLen = endOfLine - beginningOfLine;
 			char line[64];
 			size_t lineLen = trimSpaces(line, sizeof(line), beginningOfLine, srcLineLen);
+			if (lineLen > 0) {
+				TokenizedLine_Create(&tokenizedLines[li], line, li, lineLen);
+				li++;
+			}
+			
 
-		
-			TokenizedLine_Create(&tokenizedLines[li], line, li, lineLen);
-
-			if (li != fLineCount - 1) {
+			if (i != srcLineCount - 1) {
 				// set new beginning of line
 				beginningOfLine = endOfLine + 1;
 			}
 		}
 
-		
+		tokenizedLinesCount = li;
+
+
 		struct Token* varTokens = malloc(sizeof(struct Token)*fLineCount + 1);
 		size_t varTokensCount = 0u;
 
@@ -601,31 +657,66 @@ bool asmToTape(const struct PaperTape1Inch* tape, const char* dstFilename)
 
 		size_t curTapeFrame = 0;
 		// 10 frames per inch
-		PaperTape1Inch_Create(tape, (float)(tokenizedLinesCount / 10 + 1));
+		PaperTape1Inch_Create(tape, (float)(tokenizedLinesCount / 5) + 1);
 
 
-		// convert asm to assembly
+		// convert asm to assembly, line by line
 		for (size_t i = 0; i < tokenizedLinesCount; ++i) {
 			Word12 asmInst = 0x0;
 
 			struct TokenizedLine line = tokenizedLines[i];
-			
+
+			// iterate over tokens
 			enum AddressingMode am = NONE;
 			for (uint16_t j = 0; j < 3; ++j) {
 				// it's a variable declaration, skip word
-				if (j == 0 && line.tokens[j].type == VARIABLE) {
+				if (j == 0 && line.tokens[j].type == VARIABLE && (getTokenCountOfTokenizedLine(&line) > 1)) {
+					continue;
+				}
+				else if (j == 0 && line.tokens[j].type == VARIABLE && (getTokenCountOfTokenizedLine(&line) == 1))
+				{
+					struct Token* varTK = NULL;
+					// resolve var token
+					for (size_t k = 0; k < varTokensCount; ++k) {
+						if (strcmp(varTokens[k].varName, line.tokens[j].varName) == 0) {
+							varTK = &varTokens[k];
+							break;
+						}
+					}
+
+					if (!varTK) {
+						printf("Compile error, line %zu: Failed to find variable reference '%s'\n", i, line.tokens[j].varName);
+						goto bail;
+					}
+
+					asmInst |= varTK->address;
 					continue;
 				}
 
+				struct Token t = line.tokens[j];
 
 				if (line.tokens[j].type == ASM_CODE) {
 					asmInst |= (line.tokens[j].valF << 6);
 					am = getAddressingModeFromFunctionCode(line.tokens[j].valF);
 				}
 				else if (line.tokens[j].type == CONSTANT_VAL) {
-					asmInst |= line.tokens[j].valE;
+
+					uint16_t offset = 0;
+					if (line.tokens[0].type == VARIABLE) {
+						offset = 1;
+					}
+
+					if (j - offset == 0) {
+						// F
+						asmInst |= (line.tokens[j].valE << 6);
+					}
+					if (j - offset == 1) {
+						// E
+						asmInst |= line.tokens[j].valE;
+					}
 				}
 				else if (line.tokens[j].type == VARIABLE) {
+
 					struct Token* varTK = NULL;
 					// resolve var token
 					for (size_t k = 0; k < varTokensCount; ++k) {
@@ -641,30 +732,75 @@ bool asmToTape(const struct PaperTape1Inch* tape, const char* dstFilename)
 					}
 
 
-					if (varTK->address < 64 && (am == NONE_AM || am == DIRECT_AM || am == INDIRECT_AM)) {
+					if (varTK->address < 64 && (am == NONE_AM || am == DIRECT_AM || am == INDIRECT_AM))
+					{
 						asmInst |= varTK->address;
 					}
 					else if (am == FORWARD_AM || am == BACKWARD_AM) {
+						if (am == FORWARD_AM) {
+							if (line.tokens[j].address > varTK->address) {
+								printf("Compile error, line %zu: ASM instruction uses forward addressing, but the variable that it is referencing '%s' comes before the ASM instruction.\n", i, line.tokens[j].varName);
+							}
+						}
+						else {
+							if (line.tokens[j].address < varTK->address) {
+								printf("Compile error, line %zu: ASM instruction uses backward addressing, but the variable that it is referencing '%s' comes after the ASM instruction.\n", i, line.tokens[j].varName);
+							}
+						}
 						size_t addressDiffAbs = abs(varTK->address - line.tokens[j].address);
 						// note that the E value must be less than 64.
 						if (addressDiffAbs < 64) {
 							asmInst |= addressDiffAbs;
 						}
+						else {
+							printf("Compile error, line %zu: Forward and backward addressing allows for at most a difference of 63 between the operand and the ASM instruction.\n", i);
+						}
 					}
 				}
 			}
 
+			if (getTokenCountOfTokenizedLine(&line) == 2 && line.tokens[0].type == ASM_CODE
+				|| getTokenCountOfTokenizedLine(&line) == 3 && line.tokens[1].type == ASM_CODE)
+			{
+
+				Word12 fcode = (asmInst >> 6) & 0x3F;
+				if (fcode == HLT_E) {
+					asmInst = 0b000000000000;
+				}
+				else if (fcode == ERR_E) {
+					asmInst = 0b111111111111;
+				}
+				else if (fcode == PTA_E) {
+					asmInst = 0b000001000001;
+				}
+			}
+
+
+
+
+
+			if ((int64_t)curTapeFrame > (int64_t)tape->rowCount-2)
+			{
+				printf("Compile error: tape is not long enough to hold all the ASM instructions!");
+				goto bail;
+			}
 
 			// the ASM instruction has been formed, now write it to the tape
 
-			tape->data[curTapeFrame] = 0x0;
-			tape->data[curTapeFrame] = (asmInst >> 6) & 0x3F; // higher bits
+			tape->data[curTapeFrame] = 0b0000000; // 7th level of 1st frame should be punched
+			tape->data[curTapeFrame] |= (asmInst >> 6) & 0x3F; // higher order bits
 			const char dbgc = (asmInst >> 6) & 0x3F;
 			curTapeFrame++;
 
-			tape->data[curTapeFrame] = (asmInst) & 0x3F; // lower bits
-			tape->data[curTapeFrame] |= (1 << 6); // punch 7th level of 2nd frame
-			//const char dbgc1 = tape->data[curTapeFrame];
+			if (i == tokenizedLinesCount - 1) {
+				// by having no 7th level punch on the last 2nd frame we tell the reader to stop
+				tape->data[curTapeFrame] = 0b1000000;
+			}
+			else {
+				// the 2nd frame should have a punch on the 7th level
+				tape->data[curTapeFrame] = 0b0000000;
+			}
+			tape->data[curTapeFrame] |= (asmInst) & 0x3F; // lower order bits
 			curTapeFrame++;
 
 		}
@@ -675,8 +811,14 @@ bool asmToTape(const struct PaperTape1Inch* tape, const char* dstFilename)
 
 	bail:
 
-		free(tokenizedLines);
-		free(varTokens);
+		if (tokenizedLines) {
+			free(tokenizedLines);
+		}
+		if (varTokens) {
+			free(varTokens);
+		}
+		tokenizedLines = NULL;
+		varTokens = NULL;
 	}
 	else {
 		printf("Failed to read tape source file.\n");

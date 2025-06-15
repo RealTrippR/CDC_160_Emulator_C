@@ -19,6 +19,7 @@ struct CDC_160
 
 	uint8_t stepMode; //0: run, 1: paused, 2: step one instruction, then pause
 
+	uint8_t loadNoneClear; //0: load, 1: none, 2: clear
 	int EnterNoneSweep;
 
 	float margin;
@@ -38,35 +39,73 @@ struct CDC_160
 
 	bool selectFailure;
 	/*The External Function instruction places a 12-bit code on the output lines and places a
-									signal on the external function ready line. Upon receiving this signal, all external
-									devices examine the code contained on the output lines. If a device recognizes its external function code, it sends an acknowledgment (resume signal) to the computer,
-									which then proceeds to the next instruction. If no external unit sends back a resume,
-									the computer will stop and display a SEL signal on the console.
-									*/
+					signal on the external function ready line. Upon receiving this signal, all external
+					devices examine the code contained on the output lines. If a device recognizes its external function code, it sends an acknowledgment (resume signal) to the computer,
+					which then proceeds to the next instruction. If no external unit sends back a resume,
+					the computer will stop and display a SEL signal on the console.
+					*/
 
-								/*
-								The 12 input lines are also dual-purpose. Normally they carry up to 12 bits of input
-								information from the external device to the computer. After a status request external
-								function, the input lines carry 12 bits of status information, which is read into the computer by an input instruction. Status information is identified by the fact that it is the
-								first information read in by an input instruction after a status request.
-								*/
+					/*
+					The 12 input lines are also dual-purpose. Normally they carry up to 12 bits of input
+					information from the external device to the computer. After a status request external
+					function, the input lines carry 12 bits of status information, which is read into the computer by an input instruction. Status information is identified by the fact that it is the
+					first information read in by an input instruction after a status request.
+					*/
 };
 
-inline void CDC_160_TurnOn(struct CDC_160* cdc) {
-	cdc->on = true;
-	cdc->inputLine = false;
-	cdc->inputRequestLine = false;
-	cdc->outputReadyLine = false;
-	cdc->outputLine = false;
-	cdc->resumeLine = false;
-	cdc->selectFailure = false;
-	cdc->readyToOperate = false;
+bool CDC_160_PrintCLI(struct CDC_160* cdc);
 
-	cdc->tapeReader.tapeLevel = 7;
+void CDC_160_SaveStateToDisk(struct CDC_160* cdc, const char* stateFilePath);
+
+void CDC_160_LoadStateFromDisk(struct CDC_160* cdc, const char* stateFilePath);
+
+inline void CDC_160_TurnOn(struct CDC_160* cdc) 
+{
+	if (!cdc->on) {
+		cdc->loadNoneClear = 1u; // none
+		cdc->stepMode = 1u;
+		cdc->on = true;
+		cdc->inputLine = false;
+		cdc->inputRequestLine = false;
+		cdc->outputReadyLine = false;
+		cdc->outputLine = false;
+		cdc->resumeLine = false;
+		cdc->selectFailure = false;
+		cdc->readyToOperate = false;
+
+		cdc->tapeReader.tapeLevel = 7;
+	}
+
+}
+
+
+inline void CDC_160_TurnOff(struct CDC_160* cdc)
+{
+	if (cdc->on) {
+		cdc->on = false;
+		cdc->inputLine = false;
+		cdc->inputRequestLine = false;
+		cdc->outputReadyLine = false;
+		cdc->outputLine = false;
+		cdc->resumeLine = false;
+		cdc->selectFailure = false;
+		cdc->readyToOperate = false;
+
+		cdc->tapeReader.tapeLevel = 7;
+		cdc->stepMode = 1;
+	}
 }
 
 inline bool CDC_160_RunMode(struct CDC_160* cdc) {
 	cdc->stepMode = 0;
+	cdc->proc.regS = cdc->proc.regP;
+	READ(&cdc->proc);
+
+	int timeUS;
+	void(*f)(struct Processor*) = NULL;
+	callFunctionTranslator(&cdc->proc, &f, &timeUS);
+	if (f)
+		f(&cdc->proc);
 }
 
 inline bool CDC_160_PauseMode(struct CDC_160* cdc) {
@@ -75,6 +114,8 @@ inline bool CDC_160_PauseMode(struct CDC_160* cdc) {
 
 inline bool CDC_160_StepMode(struct CDC_160* cdc) {
 	cdc->stepMode = 2;
+	cdc->proc.regS = cdc->proc.regP;
+	READ(&cdc->proc);
 }
 
 
@@ -115,41 +156,20 @@ inline void CDC_160_FlipBitRegZ(struct CDC_160* cdc, uint8_t bit)
 
 
 
-inline void CDC_160_Tick(struct CDC_160* cdc) {
-	if (cdc->stepMode == 2) {
-		processorTick(&cdc->proc);
-		CDC_160_PauseMode(cdc);
-	}
-	else if (cdc->stepMode == 0) {
-		processorTick(&cdc->proc);
 
-	}
+inline bool CDC_160_Load(struct CDC_160* cdc) 
+{
+	cdc->loadNoneClear = 0;
 }
 
-// returns true if successful
-inline bool CDC_160_PowerOnTapePunch(struct CDC_160* cdc) {
-
-}
-// returns true if successful
-inline bool CDC_160_PowerOffTapePunch(struct CDC_160* cdc) {
-
-}
-
-inline bool CDC_160_PowerOnTapeReader(struct CDC_160* cdc) {
-
-}
-
-inline bool CDC_160_PowerOffTapeReader(struct CDC_160* cdc) {
-
-}
-
-inline bool CDC_160_Load(struct CDC_160* cdc) {
+inline bool CDC_160_LoadTick(struct CDC_160* cdc)
+{
 	if (cdc->on == false) {
 		return false;
 	}
 
 	// note that the computer should stop until the tape is done reading.
-	
+
 	// see page 61: https://bitsavers.org/pdf/cdc/160/CDC160A/60014500G_CDC160A_Reference_Manual_196503.pdf?utm_source=chatgpt.com
 	// by default, the computer loads programs in a two-frames per word format of 7-level tape,
 	// where the 7th level punch is not part of this data.
@@ -166,44 +186,85 @@ inline bool CDC_160_Load(struct CDC_160* cdc) {
 		return false;
 	}
 
-	uint32_t frameIndex = 0;
+	static size_t stage = 0;
 
+
+
+	uint32_t frameIndex = 0;
 
 	cdc->proc.regS = cdc->proc.regP;
 
+	bool isDone = false;
 	// TODO: IMPLEMENT READER RETURN CODES
-	while (true) {
+	//while (true) {
+
+	if (stage == 0) {
 		cdc->proc.regZ = 0x0;
 		cdc->proc.regB = 0x0;
 
 		cdc->functionReadyLine = true;
 		cdc->outputLine = 04102; // ferranti function code.
-		WAIT_FOR_RESUME(cdc);
+		stage++;
+	}
+	else if (stage == 1) {
+		if (WAIT_FOR_RESUME(cdc)) {
+			cdc->functionReadyLine = false;
+			stage++;
+		}
+	}
+	else if (stage == 2) {
 		cdc->functionReadyLine = false;
-
-
 		cdc->inputLine = 0x0;
 		cdc->inputRequestLine = true;
-		WAIT_FOR_RESUME(cdc);
-		cdc->inputRequestLine = false;
+		stage++;
+	}
+	else if (stage == 3) {
+		if (WAIT_FOR_RESUME(cdc)) {
+			cdc->functionReadyLine = false;
+			cdc->inputRequestLine = false;
+			stage++;
+		}
+	}
+	else if (stage == 4) {
+
+		if (cdc->inputLine == 02000 || cdc->inputLine == 0400 || cdc->inputLine == 04000) {
+			isDone = true;
+		}
 
 		// load first frame into register B
 		cdc->proc.regZ |= (cdc->inputLine << 6); // first frame contains higher order bits
 		cdc->proc.regB = cdc->proc.regZ;
-		
-
-
 		cdc->functionReadyLine = true;
 		cdc->outputLine = 04102; // ferranti function code.
-		WAIT_FOR_RESUME(cdc);
-		cdc->functionReadyLine = false;
-
+		stage++;
+	}
+	else if (stage == 5) {
+		if (WAIT_FOR_RESUME(cdc)) {
+			cdc->functionReadyLine = false;
+			cdc->inputRequestLine = false;
+			stage++;
+		}
+	}
+	else if (stage == 6) {
 		// request 2nd frame
 		cdc->inputLine = 0x0;
 		cdc->inputRequestLine = true;
-		WAIT_FOR_RESUME(cdc);
-		cdc->proc.regZ = cdc->inputLine;
+		stage++;
+	}
+	else if (stage == 7) {
+		if (WAIT_FOR_RESUME(cdc)) {
+			cdc->functionReadyLine = false;
+			cdc->inputRequestLine = false;
+			stage++;
+		}
+	}
+	else if (stage==8) {
 		cdc->inputRequestLine = false;
+		cdc->proc.regZ = cdc->inputLine;
+
+		if (cdc->proc.regZ == 02000 || cdc->proc.regZ == 0400 || cdc->proc.regZ == 04000) {
+			isDone = true;
+		}
 
 		// load second frame and OR it with first
 		cdc->proc.regZ |= cdc->inputLine & 0x3F; // second frame contains lower order bits
@@ -212,24 +273,54 @@ inline bool CDC_160_Load(struct CDC_160* cdc) {
 
 		WRITE(&cdc->proc);
 
+		Word12 tmp = cdc->tapeReader.tape->data[cdc->tapeReader.headPosVert];
+		tmp >>= 6;
 		// get 7th bit of 2nd frame.
-		if ((cdc->tapeReader.tape->data[cdc->tapeReader.headPosVert] >> 6) == 0) {
+		if (tmp == 1 || tmp == -1/*on some compilers, bitshift keeps sign*/) {
 			// stop: there is no 7th level punch.
-			break;
+			isDone = true;
 		}
 
 		// increment S & P reg
 		cdc->proc.regB = Add_Word12(cdc->proc.regP, 1);
 		cdc->proc.regS = cdc->proc.regB;
 		cdc->proc.regP = cdc->proc.regS;
+
+		stage = 0;
 	}
 
-	HLT(&cdc->proc);
+
+	if (isDone) {
+		cdc->loadNoneClear = 1;
+		HLT(&cdc->proc);
+	}
 	return true;
 }
 
+inline void CDC_160_Tick(struct CDC_160* cdc) {
+	if (cdc->on) {
+		FerrantiPhotoelectricReader_Tick(&cdc->tapeReader, cdc);
+		//TeletypeModelBRPE_Tick(&cdc->tapeReader, cdc);
+
+		if (0 == cdc->loadNoneClear) {
+			CDC_160_LoadTick(cdc);
+		}
+		else {
+
+			if (cdc->stepMode == 2) {
+				processorTick(&cdc->proc);
+				CDC_160_PauseMode(cdc);
+			}
+			else if (cdc->stepMode == 0) {
+				processorTick(&cdc->proc);
+			}
+		}
+	}
+}
+
 // returns true if successful
-inline bool CDC_160_Clear(struct CDC_160* cdc) {
+inline bool CDC_160_Clear(struct CDC_160* cdc) 
+{
 	if (cdc->on == false) {
 		return false;
 	}
@@ -246,6 +337,7 @@ inline bool CDC_160_Clear(struct CDC_160* cdc) {
 
 	cdc->readyToOperate = true;
 
+	cdc->loadNoneClear = 1;
 	return true;
 }
 

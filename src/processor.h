@@ -34,7 +34,7 @@ struct Processor
 
 bool WAIT_FOR_RESUME(struct Processor* proc);
 
-void START(struct Processor* proc);
+//void START(struct Processor* proc);
 
 void WRITE(struct Processor* proc);
 
@@ -46,7 +46,7 @@ void printRegisters(struct Processor* proc);
 
 void processorTick(struct Processor* proc);
 
-void callFunctionTranslator(struct Processor* proc, void(**inst_func)(struct Processor*));
+void callFunctionTranslator(struct Processor* proc, void(**inst_func)(struct Processor*), float* waitUS);
 
 // Addressing modes
 void readDirect(struct Processor* proc);

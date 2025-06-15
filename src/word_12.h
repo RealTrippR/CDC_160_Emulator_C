@@ -94,8 +94,33 @@ inline int8_t Less_Word12(Word12 A, Word12 B) {
 
 #include "twos_and_ones_complement_conversions.h"
 
+inline void Word12toWStr(Word12 word, wchar_t* buff8Chars) {
+	memset(buff8Chars, 0, sizeof(wchar_t)*8);
 
-inline void ToString_Word12(Word12 word, char* buff8Bytes) {
+	_snwprintf_s(buff8Chars, 8, _TRUNCATE, L"%u", word);
+}
+
+inline void Word12toStrOctalFillZeros(Word12 word, char* buff8Bytes) {
+	memset(buff8Bytes, 0, 8);
+	snprintf(buff8Bytes, 8, "%04o", word);
+}
+
+inline void Word12toStrOctal(Word12 word, char* buff8Bytes) {
+	memset(buff8Bytes, 0, 8);
+	snprintf(buff8Bytes, 8, "%o", word);
+}
+
+inline void Word12toStr(Word12 word, char* buff8Bytes) {
+	memset(buff8Bytes, 0, 8);
+	snprintf(buff8Bytes, 8, "%u", word);
+}
+
+inline void Word12toStrFillZeros(Word12 word, char* buff8Bytes) {
+	memset(buff8Bytes, 0, 8);
+	snprintf(buff8Bytes, 8, "%04u", word);
+}
+
+inline void SignedWord12toStr(Word12 word, char* buff8Bytes) {
 
 	uint16_t w = ToTwosComplement(word);
 	char* c = buff8Bytes;

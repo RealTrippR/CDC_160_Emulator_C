@@ -67,9 +67,12 @@
     <ClInclude Include="src\asmToTape.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\getTickCount.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.c" />
+    <ClCompile Include="r2.c" />
     <ClCompile Include="src\processor.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -86,6 +89,10 @@
     <ClCompile Include="src\asmToTape.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="r1.c" />
+    <ClCompile Include="src\cdc160.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="exampleASM\Routine2.asm">
@@ -95,6 +102,9 @@
       <Filter>exampleASM</Filter>
     </None>
     <None Include="exampleASM\Routine1.asm.tape">
+      <Filter>exampleASM</Filter>
+    </None>
+    <None Include="exampleASM\IntegerMultiplication.asm">
       <Filter>exampleASM</Filter>
     </None>
   </ItemGroup>

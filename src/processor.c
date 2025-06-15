@@ -2,6 +2,7 @@
 #include <assert.h>
 #include "processor.h"
 #include "CDC_160.h"
+#include "getTickCount.h"
 
 #undef OUT;
 
@@ -27,34 +28,53 @@ void WRITE(struct Processor* proc) {
     mem->data[proc->regS] = proc->regZ;
 }
 
-
+/*
 void START(struct Processor* proc) {
     proc->regS = proc->regP;
     READ(proc);
 
     void(*f)(struct Processor*);
     callFunctionTranslator(proc, &f);
-    f(proc);
+    if (f)
+        f(proc);
 }
+*/
 
 
 /*****************************************************/
 // returns false if a resume input timeout occurred
-bool WAIT_FOR_RESUME(struct Processor* proc) {
+bool WAIT_FOR_RESUME(struct Processor* proc)
+{
+    static uint32_t i = 0;
+
+
     // wait until input request - this is the connection code
-    for (uint32_t i = 0; i < 39062/*approx 250 ms, which is the timeout for peripherals*/; ++i)
-    {
-        sleepus(6.4); // sleep 1 clock cycle
+    //for (uint32_t i = 0; i < 40000/*approx 250 ms, which is the timeout for peripherals*/;)
+    //{
+        static size_t usWaitCounter = 0x0;
+        static unsigned long timeLastUS = 0x0;
+        static bool sleeping = false;
+        static float timeUS = 6.4;
 
-        if (mainframe->inputRequestLine == true) {
+        sleepusNonBlocking((unsigned long)timeUS, &usWaitCounter, &timeLastUS, &sleeping);
 
-            return true;
-            break;
+        if (!sleeping) {
+            i++;
+
+            if (mainframe->resumeLine == true) {
+                mainframe->inputRequestLine = false;
+                mainframe->resumeLine = false;
+                return true;
+                //break;
+            }
         }
-    }
+    //}
 
-    mainframe->selectFailure = true;
-    HLT(proc);
+        if (i > 40000) {
+            i = 0;
+            mainframe->selectFailure = true;
+            HLT(proc);
+        }
 
     return false;
 }
@@ -144,9 +164,9 @@ void printRegisters(struct Processor* proc) {
     char a[8];
     char z[8];
 
-    ToString_Word12(proc->regP, p);
-    ToString_Word12(proc->regA, a);
-    ToString_Word12(proc->regZ, z);
+    Word12toStr(proc->regP, p);
+    Word12toStr(proc->regA, a);
+    Word12toStr(proc->regZ, z);
 
     printf("P: %s | ", p);
     printf("A: %s | ", a);
@@ -155,18 +175,26 @@ void printRegisters(struct Processor* proc) {
 }
 
 void processorTick(struct Processor* proc) {
+    static size_t usWaitCounter = 0x0;
+    static unsigned long timeLastUS = 0x0;
+    static bool sleeping = false;
+    static float timeUS = 6.4;
+ 
+    sleepusNonBlocking((unsigned long)timeUS, &usWaitCounter, &timeLastUS, &sleeping);
 
-    void(*f)(struct Processor*) = NULL;
-    callFunctionTranslator(proc, &f);
-    if (f)
-        f(proc);
+    if (!sleeping) {
+        void(*f)(struct Processor*) = NULL;
+        callFunctionTranslator(proc, &f, &timeUS);
+        if (f)
+            f(proc);
+    }
 }
 
 
-void callFunctionTranslator(struct Processor* proc, void(**inst_func)(struct Processor*)) 
+void callFunctionTranslator(struct Processor* proc, void(**inst_func)(struct Processor*), float* waitUS) 
 {
     *inst_func = NULL; // default
-    float fTimeUsec = 0.0;
+    float fTimeUsec = 1.0;
 
     // handle primary asm instructions
     proc->regF = Word12ToWord6(ShiftRight_Word12(proc->regZ, 6));
@@ -480,9 +508,10 @@ void callFunctionTranslator(struct Processor* proc, void(**inst_func)(struct Pro
 
 
 /*****************************************************/
-if (fTimeUsec != 0.0) {
-    sleepus(fTimeUsec);
-}
+//if (fTimeUsec != 0.0) {
+//    sleepus(fTimeUsec);
+//}
+    *waitUS = fTimeUsec;
 }
 
 /*****************************************************/
@@ -519,9 +548,11 @@ void JNI_INDIRECT(struct Processor* proc) {
 // Error & Halt
 void ERR(struct Processor* proc) {
     proc->regZ = 0b111111111111;
+    mainframe->stepMode = 1;
 }
 void HLT(struct Processor* proc) {
     proc->regZ = 0b000000000000;
+    mainframe->stepMode = 1;
 }
 
 /*****************************************************/
@@ -660,6 +691,7 @@ void LCF(struct Processor* proc) {
     RNI(proc);
 }
 void LCB(struct Processor* proc) {
+    Word12 i = E_REG;
     readRelBackward(proc);
     proc->regA = BitwiseNot_Word12(proc->regZ);
     RNI(proc);
@@ -846,17 +878,19 @@ void AOI(struct Processor* proc) {
     WRITE(proc);
     RNI(proc);
 }
-void AOF(struct Processor* proc) {
+void AOF(struct Processor* proc) 
+{
     readRelForward(proc);
-    proc->regB = Add_Word12(proc->regZ, ToOnesComplement(1));
+    proc->regB = Add_Word12(proc->regZ, 1);
     proc->regA = proc->regB;
     proc->regZ = proc->regB;
     WRITE(proc);
     RNI(proc);
 }
-void AOB(struct Processor* proc) {
+void AOB(struct Processor* proc) 
+{
     readRelBackward(proc);
-    proc->regB = Add_Word12(proc->regZ, ToOnesComplement(1));
+    proc->regB = Add_Word12(proc->regZ, 1);
     proc->regA = proc->regB;
     proc->regZ = proc->regB;
     WRITE(proc);
@@ -872,7 +906,6 @@ void ZJF(struct Processor* proc) {
         return;
     }
     RNI(proc);
-    return;
 }
 void ZJB(struct Processor* proc) {
     if (Word12_IsZero(proc->regA)) {

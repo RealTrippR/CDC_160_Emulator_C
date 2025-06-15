@@ -150,8 +150,9 @@ void PaperTape1Inch_Create(struct PaperTape1Inch* tape, uint32_t lengthInInches)
 	tape->level = 7;
 	tape->rowCount = (lengthInInches) * 10; // 10 rows per inch
 	tape->data = malloc(tape->rowCount); // max of 8 holes per row
-
-	memset(tape->data, 1, tape->rowCount); // by default, it isn't punched
+	if (tape->data != NULL) {
+		memset(tape->data, 1, tape->rowCount); // by default, it isn't punched
+	}
 }
 
 void PaperTape1Inch_Destroy(struct PaperTape1Inch* tape) {
