@@ -12,7 +12,6 @@ struct CDC_160* mainframe;
 
 void SET_MEM_BANK(struct MemBank* membank) {
     mem = membank;
-    mem->data[0] = 07001; // see page 46: https://ia802905.us.archive.org/12/items/bitsavers_cdc160023aingManual1960_4826291/023a_160_Computer_Programming_Manual_1960_text.pdf
 }
 
 void SET_MAINFRAME(struct CDC_160* _mainframe) {

@@ -32,6 +32,6 @@ int main()
 		CDC_160_Tick(&mainframe);
 	}
 
-	CDC_160_SaveStateToDisk(&mainframe, "CD_C160.state");
+	CDC_160_SaveStateToDisk(&mainframe, "CDC_160.state");
 	PaperTape1Inch_Destroy(&tape);
 }

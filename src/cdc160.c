@@ -341,14 +341,13 @@ void CDC_160_SaveStateToDisk(struct CDC_160* cdc, const char* stateFilePath)
 
 
     if (fptr) {
-        uint8_t data[2 + 2 + 2 + 4096];
+        uint8_t data[sizeof(cdc->proc) + 4096];
         memset(data, 0, sizeof(data));
-        memcpy(data, cdc->proc.regP, 2);
-        memcpy(data + 2, cdc->proc.regA, 2);
-        memcpy(data + 4, cdc->proc.regZ, 2);
-        memcpy(data + 6, cdc->mem.data, 4096);
 
-        fwrite(data, sizeof(data), 1, stateFilePath);
+        memcpy(data, &cdc->proc, sizeof(cdc->proc));
+        memcpy(data + sizeof(cdc->proc), cdc->mem.data, 4096);
+
+        fwrite(data, sizeof(data), 1, fptr);
 
         fclose(fptr);
     }
@@ -361,14 +360,11 @@ void CDC_160_LoadStateFromDisk(struct CDC_160* cdc, const char* stateFilePath)
 
 
     if (fptr) {
-        uint8_t data[2 + 2 + 2 + 4096];
-        memset(data, 0, sizeof(data));
-        memcpy(data, cdc->proc.regP, 2);
-        memcpy(data + 2, cdc->proc.regA, 2);
-        memcpy(data + 4, cdc->proc.regZ, 2);
-        memcpy(data + 6, cdc->mem.data, 4096);
-
-        fwrite(data, sizeof(data), 1, stateFilePath);
+        uint8_t data[sizeof(cdc->proc) + 4096];
+        fread_s(data, sizeof(data), 4096, 1, fptr);
+        
+        memcpy(&cdc->proc, data, sizeof(cdc->proc));
+        memcpy(cdc->mem.data, data + sizeof(cdc->proc), 4096);
 
         fclose(fptr);
     }
