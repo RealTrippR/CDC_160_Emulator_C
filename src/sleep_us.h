@@ -28,17 +28,14 @@ inline void sleepus(unsigned long ms) {
 
 
 
-inline void sleepusNonBlocking(unsigned long waitus, unsigned long* usWaitCounter, unsigned long* timeUSatLastCall, bool* sleeping)
+inline void sleepusNonBlocking(uint64_t waitus, uint64_t* usWaitCounter, uint64_t* timeUSatLastCall, bool* sleeping)
 {
-    if (sleeping == false) {
-        *timeUSatLastCall = getTickCountUS64();
-    }
     if (*timeUSatLastCall == 0x0) {
         *timeUSatLastCall = getTickCountUS64();
     }
     *sleeping = true;
     uint64_t currentTimeUS = getTickCountUS64(); // US since sys start
-    unsigned long timeDelta = currentTimeUS - *timeUSatLastCall;
+    uint64_t timeDelta = currentTimeUS - *timeUSatLastCall;
 
     *usWaitCounter += timeDelta;
     *timeUSatLastCall = currentTimeUS;

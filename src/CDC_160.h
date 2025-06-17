@@ -53,6 +53,8 @@ struct CDC_160
 					*/
 };
 
+void CDC_160_InitCLI();
+
 bool CDC_160_PrintCLI(struct CDC_160* cdc);
 
 void CDC_160_SaveStateToDisk(struct CDC_160* cdc, const char* stateFilePath);
@@ -298,6 +300,11 @@ inline bool CDC_160_LoadTick(struct CDC_160* cdc)
 }
 
 inline void CDC_160_Tick(struct CDC_160* cdc) {
+	static uint16_t tdms = 0;
+	static uint64_t lastTimeMS = 0;
+	if (lastTimeMS == 0) {
+		lastTimeMS = GetTickCount64();
+	}
 	if (cdc->on) {
 		FerrantiPhotoelectricReader_Tick(&cdc->tapeReader, cdc);
 		//TeletypeModelBRPE_Tick(&cdc->tapeReader, cdc);
@@ -308,14 +315,17 @@ inline void CDC_160_Tick(struct CDC_160* cdc) {
 		else {
 
 			if (cdc->stepMode == 2) {
-				processorTick(&cdc->proc);
-				CDC_160_PauseMode(cdc);
+				if (processorTick(&cdc->proc, tdms)) {
+					CDC_160_PauseMode(cdc);
+				}
 			}
 			else if (cdc->stepMode == 0) {
-				processorTick(&cdc->proc);
+				processorTick(&cdc->proc, tdms);
 			}
 		}
 	}
+	tdms = GetTickCount64() - lastTimeMS;
+	lastTimeMS = GetTickCount64();
 }
 
 // returns true if successful

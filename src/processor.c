@@ -173,20 +173,31 @@ void printRegisters(struct Processor* proc) {
     printf("\n");
 }
 
-void processorTick(struct Processor* proc) {
-    static size_t usWaitCounter = 0x0;
-    static unsigned long timeLastUS = 0x0;
-    static bool sleeping = false;
+bool processorTick(struct Processor* proc, uint64_t timeDeltaMS) 
+{
     static float timeUS = 6.4;
- 
-    sleepusNonBlocking((unsigned long)timeUS, &usWaitCounter, &timeLastUS, &sleeping);
+  /*  static uint64_t usWaitCounter = 0x0;
+    static uint64_t timeLastUS = 0x0;
+    static bool sleeping = false;
+    
+    if (((int64_t)timeUS - (int64_t)timeDeltaMS) < 0) {
+        timeUS = 0;
+    }
+    else {
+        timeUS -= timeDeltaMS/1000;
+    }
+    sleepusNonBlocking((uint64_t)timeUS, &usWaitCounter, &timeLastUS, &sleeping);*/
 
-    if (!sleeping) {
+    //if (!sleeping) {
         void(*f)(struct Processor*) = NULL;
         callFunctionTranslator(proc, &f, &timeUS);
-        if (f)
+        if (f) {
             f(proc);
-    }
+            return true;
+        }
+   // }
+
+    return false;
 }
 
 
@@ -690,7 +701,6 @@ void LCF(struct Processor* proc) {
     RNI(proc);
 }
 void LCB(struct Processor* proc) {
-    Word12 i = E_REG;
     readRelBackward(proc);
     proc->regA = BitwiseNot_Word12(proc->regZ);
     RNI(proc);

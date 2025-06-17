@@ -149,17 +149,53 @@ void printReg(char* buff8, uint8_t highlightedDigit, bool isRed, bool __blink)
         FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 }
 
-bool CDC_160_PrintCLI(struct CDC_160* cdc)
+char lines[100][101];
+uint32_t curline;
+
+void CDC_160_InitCLI() 
 {
-    bool retval = true;
     // set DOS mode
     SetConsoleOutputCP(437);
     SetConsoleCP(437);
-
-    uint32_t curline;
-
-    char lines[100][101];
     memset(lines, 0, sizeof(lines));
+
+    curline = 0;
+    snprintf(lines[curline], 100, "\xC9\xCD\xCD\xCD\xCB\xCD\xCD\xCD\xCD\xCB\xCD\xCD"
+        "\xCD\xCD\xCB\xCD\xCD\xCD\xCD\xBB");
+
+    curline = 2;
+    snprintf(lines[curline], 100, "\xCC\xCD\xCD\xCD\xCA\xCD\xCD\xCD\xCD\xCA\xCD\xCD"
+        "\xCD\xCD\xCA\xCD\xCD\xCD\xCD\xB9");
+    curline = 3;
+    snprintf(lines[curline], 100, "\xBASTT  P    A    Z  \xBA");
+
+    curline = 4;
+    snprintf(lines[curline], 100, "\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+        "\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBC");
+
+    curline = 5;
+    snprintf(lines[curline], 100, "ON");
+    curline = 6;
+    snprintf(lines[curline], 100, "OFF");
+    curline = 7;
+    snprintf(lines[curline], 100, "RUN");
+    curline = 8;
+    snprintf(lines[curline], 100, "PAUSE");
+    curline = 9;
+    snprintf(lines[curline], 100, "STEP");
+    curline = 10;
+    snprintf(lines[curline], 100, "LOAD");
+    curline = 11;
+    snprintf(lines[curline], 100, "CLEAR");
+    curline = 12;
+    snprintf(lines[curline], 100, "QUIT");
+    curline = 13;
+}
+
+bool CDC_160_PrintCLI(struct CDC_160* cdc)
+{
+    bool retval = true;
+    curline = 0u;
 
     struct Processor* proc = &cdc->proc;
 
@@ -197,25 +233,7 @@ bool CDC_160_PrintCLI(struct CDC_160* cdc)
     else {
         strcpy_s(statusColor, 10, ANSI_COLOR_GREEN);
     }
-    curline = 0;
-    snprintf(lines[curline], 100, "\xC9\xCD\xCD\xCD\xCB\xCD\xCD\xCD\xCD\xCB\xCD\xCD"
-                                  "\xCD\xCD\xCB\xCD\xCD\xCD\xCD\xBB");
-    curline = 1;
-  /*  snprintf(lines[curline], 100, 
-        ANSI_COLOR_RESET "\xBA%s%s"
-        ANSI_COLOR_RESET "\xBA%s%04s"
-        ANSI_COLOR_RESET "\xBA%s%04s"
-        ANSI_COLOR_RESET "\xBA%04s\xBA", statusColor, errcode, isred, p, isred, a, z);*/
-    curline = 2;
-
-    snprintf(lines[curline], 100, "\xCC\xCD\xCD\xCD\xCA\xCD\xCD\xCD\xCD\xCA\xCD\xCD"
-                                  "\xCD\xCD\xCA\xCD\xCD\xCD\xCD\xB9");
-    curline = 3;
-    snprintf(lines[curline], 100, "\xBASTT  P    A    Z  \xBA");
-
-    curline = 4;
-    snprintf(lines[curline], 100, "\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-        "\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBC");
+    
 
     static bool waitingForNumberInput = false;
     static int16_t option = 0;
@@ -228,7 +246,6 @@ bool CDC_160_PrintCLI(struct CDC_160* cdc)
             waitingForNumberInput = false;
             dig = -1;
         }
-        int ext = _getch(); // key ext. key code
 
         if (ch == 13) {
             if (option < 12) {
@@ -240,10 +257,18 @@ bool CDC_160_PrintCLI(struct CDC_160* cdc)
                     retval = false;
                 }
             }
-            goto skip;
         }
-        if (ch == 224 && ext == 72) option--; // up arrow
-        if (ch == 224 && ext == 80) option++; // down arrow
+
+        if (ch == 224) {
+            int ext = _getch(); // key ext. key code
+            if (ext == 72) {
+
+                option--; // up arrow
+            }
+            else if (ext == 80) {
+                option++; // down arrow
+            }
+        }
 
         if (option < 0) {
             option = 0;
@@ -251,26 +276,7 @@ bool CDC_160_PrintCLI(struct CDC_160* cdc)
         if (option > 19) {
             option = 19;
         }
-    }
-
-skip:
-    curline = 5;
-    snprintf(lines[curline], 100, "ON");
-    curline = 6;
-    snprintf(lines[curline], 100, "OFF");
-    curline = 7;
-    snprintf(lines[curline], 100, "RUN");
-    curline = 8;
-    snprintf(lines[curline], 100, "PAUSE");
-    curline = 9;
-    snprintf(lines[curline], 100, "STEP");
-    curline = 10;
-    snprintf(lines[curline], 100, "LOAD");
-    curline = 11;
-    snprintf(lines[curline], 100, "CLEAR");
-    curline = 12;
-    snprintf(lines[curline], 100, "QUIT");
-    curline = 13;
+    }    
 
 
 
@@ -316,7 +322,6 @@ skip:
                 printReg(z, option - 8, false, waitingForNumberInput);
                 printf(ANSI_COLOR_RESET"\xBA");
 
-
                 printf("\n");
             }
             else {
@@ -327,7 +332,7 @@ skip:
                 FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
         }
     }
-    memset(lines, 0, sizeof(lines));
+
     printf("\033[15A\r");
 
 

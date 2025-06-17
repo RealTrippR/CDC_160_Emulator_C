@@ -44,7 +44,7 @@ void READ(struct Processor* proc);
 
 void printRegisters(struct Processor* proc);
 
-void processorTick(struct Processor* proc);
+bool processorTick(struct Processor* proc, uint64_t timeDeltaMS);
 
 void callFunctionTranslator(struct Processor* proc, void(**inst_func)(struct Processor*), float* waitUS);
 

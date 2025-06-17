@@ -63,7 +63,6 @@
     <ClInclude Include="src\sleep_us.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="cthreads.h" />
     <ClInclude Include="src\asmToTape.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -82,7 +81,6 @@
     <ClCompile Include="src\teletype_model_BRPE.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="cthreads.c" />
     <ClCompile Include="src\ferranti_photoelectric_reader.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -93,6 +91,7 @@
     <ClCompile Include="src\cdc160.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="arithmeticValidation.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exampleASM\Routine2.asm">

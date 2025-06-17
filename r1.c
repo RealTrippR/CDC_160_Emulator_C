@@ -14,8 +14,15 @@ int main()
 	CDC_160_LoadStateFromDisk(&mainframe, "CDC_160.state");
 	SET_MAINFRAME(&mainframe);
 
-	//CDC_160_TurnOn(&mainframe);
-	//CDC_160_Clear(&mainframe);
+	Word12 a = 1;
+	Word12 b = 1;
+	//Word12 c = Add_Word12(a, b);
+	Word12 c = Sub_Word12(a, b);
+
+
+
+
+
 
 
 	// Load paper tape
@@ -24,6 +31,7 @@ int main()
 
 	mainframe.tapeReader.tape = &tape;
 
+	CDC_160_InitCLI();
 	while (1)
 	{
 		if (CDC_160_PrintCLI(&mainframe) == false) {

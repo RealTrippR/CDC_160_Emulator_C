@@ -120,6 +120,9 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
+      <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,7 +132,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="cthreads.h" />
     <ClInclude Include="src\asmToTape.h" />
     <ClInclude Include="src\CDC_160.h" />
     <ClInclude Include="src\ferrranti_photoelectric_reader.h" />
@@ -149,11 +151,16 @@
     <ClInclude Include="src\word_6.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="cthreads.c" />
-    <ClCompile Include="r1.c" />
+    <ClCompile Include="arithmeticValidation.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="r1.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="r2.c">
       <LanguageStandard_C Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdc11</LanguageStandard_C>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="src\asmToTape.c" />
     <ClCompile Include="src\cdc160.c" />
