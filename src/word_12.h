@@ -67,8 +67,8 @@ inline Word12 Sub_Word12(Word12 A, Word12 B)
 
 		Word12 sub = a_bit - b_bit - borrow;
 
-		if (sub & 0x800) { // means result is negative (since a < b + borrow)
-			sub += 2;     // +2 because we're working mod 2, so -1 becomes 1
+		if (sub & 0x800) { // result is negative (since a < b + borrow)
+			sub += 2;     // +2 because it's in mod 2, so -1 becomes 1
 			borrow = 1;
 		}
 		else {
