@@ -69,15 +69,6 @@ inline Word12 Sub_Word12(Word12 A, Word12 B)
 		else {
 			result |= ((Word12)diff << i);
 		}
-		//if (sub & 0x1000) { // result is negative (since a < b + borrow)
-		//	sub += 2;     // +2 because it's in mod 2, so -1 becomes 1
-		//	borrow = 1;
-		//}
-		//else {
-		//	borrow = 0;
-		//}
-
-		//result |= (sub << i);
 	}
 
 	return result & 0xFFF;

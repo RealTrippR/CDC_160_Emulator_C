@@ -85,4 +85,11 @@ int main()
 	add_print(07776, 01);
 
 	sub_print(07776, 07776);
+
+	add_print(07777, 07777);
+
+	sub_print(07777, 0);
+
+	add_print(07776, 1);
+
 }

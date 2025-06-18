@@ -527,7 +527,7 @@ void callFunctionTranslator(struct Processor* proc, void(**inst_func)(struct Pro
 /*****************************************************/
 // 
 void RNI(struct Processor* proc) {
-    proc->regB = Add_Word12(proc->regP, 1);
+    proc->regB = Add_Word12(proc->regP, 01);
     proc->regS = proc->regB;
     proc->regP = proc->regS;
     READ(proc);
