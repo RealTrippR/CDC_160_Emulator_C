@@ -9,7 +9,7 @@
 typedef int16_t Word12;
 
 inline uint8_t Word12_IsZero(Word12 word) {
-	return (word == 0 || word == 0xFFF /* -0 */);
+	return (word == 0);//|| word == 0xFFF /* -0 */);
 }
 
 inline Word12 U16_ToWord12(uint16_t u) {
@@ -41,23 +41,9 @@ In subtraction no complementing is necessary.
 */
 inline Word12 Sub_Word12(Word12 A, Word12 B)
 {
-	/*
-	Word12 res = 0x0;
-	Word12 onesComplementOfB = BitwiseNot_Word12(B);
-	// do it bit by bit.
-	for (uint8_t i = 0; i < 12; ++i)
-	{
-		Word12 bitmask = 1 << i;
-		if ((A & bitmask) != 0 && (B & bitmask) != 0)
-		{
-			res |= (bitmask << 1);
-		}
-		else if (A & bitmask || B & bitmask) {
-			res |= bitmask;
-		}
+	if (B & 0x800) {
+		B++;
 	}
-	return res & 0xFFF;*/
-
 	Word12 result = 0;
 	Word12 borrow = 0;
 
@@ -65,17 +51,27 @@ inline Word12 Sub_Word12(Word12 A, Word12 B)
 		Word12 a_bit = (A >> i) & 1;
 		Word12 b_bit = (B >> i) & 1;
 
-		Word12 sub = a_bit - b_bit - borrow;
+		int diff = (int)a_bit - (int)b_bit - (int)borrow;
 
-		if (sub & 0x800) { // result is negative (since a < b + borrow)
-			sub += 2;     // +2 because it's in mod 2, so -1 becomes 1
+		if (diff < 0) {
+			diff += 2;
 			borrow = 1;
 		}
 		else {
 			borrow = 0;
 		}
 
-		result |= (sub << i);
+		//result |= (sub << i);
+		result |= ((Word12)diff << i);
+		//if (sub & 0x1000) { // result is negative (since a < b + borrow)
+		//	sub += 2;     // +2 because it's in mod 2, so -1 becomes 1
+		//	borrow = 1;
+		//}
+		//else {
+		//	borrow = 0;
+		//}
+
+		//result |= (sub << i);
 	}
 
 	return result & 0xFFF;
@@ -89,16 +85,6 @@ inline Word12 Add_Word12(Word12 wordA, Word12 wordB)
 	In subtraction no complementing is necessary. 
 	*/
 	return Sub_Word12(wordA/*augend*/, BitwiseNot_Word12(wordB)/*addend*/);
-	/*
-	uint16_t sum = (wordA + wordB);
-	if (sum & 0b0001000000000000) { // if carry out of bit 11 (leaked into bit 13)
-		sum = (sum & 0xFFF) + 1; // end-around carry
-	}
-
-	if ((sum & 0xFFF) == 0xFFF) {
-		return 0xFFF; // -0;
-	}
-	return sum & 0xFFF;*/
 }
 
 

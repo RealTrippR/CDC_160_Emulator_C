@@ -14,16 +14,6 @@ int main()
 	CDC_160_LoadStateFromDisk(&mainframe, "CDC_160.state");
 	SET_MAINFRAME(&mainframe);
 
-	Word12 a = 1;
-	Word12 b = 1;
-	//Word12 c = Add_Word12(a, b);
-	Word12 c = Sub_Word12(a, b);
-
-
-
-
-
-
 
 	// Load paper tape
 	struct PaperTape1Inch tape = { 0 };

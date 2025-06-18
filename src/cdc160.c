@@ -342,7 +342,7 @@ bool CDC_160_PrintCLI(struct CDC_160* cdc)
 void CDC_160_SaveStateToDisk(struct CDC_160* cdc, const char* stateFilePath)
 {
     FILE* fptr;
-    fopen_s(&fptr, stateFilePath, "w");
+    fopen_s(&fptr, stateFilePath, "wb");
 
 
     if (fptr) {

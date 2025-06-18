@@ -19,7 +19,8 @@ enum AddressingMode {
 	DIRECT_AM,
 	INDIRECT_AM,
 	FORWARD_AM,
-	BACKWARD_AM
+	BACKWARD_AM,
+	FORWARD_INDIRECT_AM
 };
 
 struct Token {
@@ -210,26 +211,65 @@ enum AddressingMode getAddressingModeFromFunctionCode(const enum FunctionCode F_
 	// B: 11
 	const uint8_t AD_CODE = F_REG & 03;
 	
-
-	if (AD_CODE == 0b00) 
-	{
-		return DIRECT_AM;
+	if (AD_CODE > 01 && AD_CODE < 060) {
+		if (AD_CODE == 0b00)
+		{
+			return DIRECT_AM;
+		}
+		else if (AD_CODE == 0b01)
+		{
+			return INDIRECT_AM;
+		}
+		else if (AD_CODE == 0b10 && AD_CODE < 040)
+		{
+			const uint8_t bitsAbove3 = F_REG >> 3;
+			if (bitsAbove3 > 0) {
+				return FORWARD_AM;
+			}
+			return NONE_AM;
+		}
+		else if (AD_CODE == 0b11)
+		{
+			return BACKWARD_AM;
+		}
 	}
-	else if (AD_CODE == 0b01)
-	{
-		return INDIRECT_AM;
-	}
-	else if (AD_CODE == 0b10) 
-	{
-		const uint8_t bitsAbove3 = F_REG >> 3;
-		if (bitsAbove3 > 0) {
+	else {
+		if (F_REG == ZJF_E) {
 			return FORWARD_AM;
 		}
-		return NONE_AM;
-	}
-	else if (AD_CODE == 0b11) 
-	{
-		return BACKWARD_AM;
+		else if (F_REG == ZJB_E) {
+			return BACKWARD_AM;
+		}
+		else if (F_REG == NZF_E) {
+			return FORWARD_AM;
+		}
+		else if (F_REG == NZB_E) {
+			return BACKWARD_AM;
+		}
+		else if (F_REG == PJF_E) {
+			return FORWARD_AM;
+		}
+		else if (F_REG == PJB_E) {
+			return BACKWARD_AM;
+		}
+		else if (F_REG == JPI_E) {
+			return INDIRECT_AM;
+		}
+		else if (F_REG == INP_E) {
+			return FORWARD_INDIRECT_AM;
+		}
+		else if (F_REG == OUT_E) {
+			return FORWARD_INDIRECT_AM;
+		}
+		else if (F_REG == OTN_E) {
+			return NONE_AM;
+		}
+		else if (F_REG == EXF_E) {
+			return FORWARD_AM;
+		}
+		else if (F_REG == INA_E) {
+			return NONE_AM;
+		}
 	}
 }
 
