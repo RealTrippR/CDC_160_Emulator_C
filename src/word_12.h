@@ -42,12 +42,12 @@ In subtraction no complementing is necessary.
 inline Word12 Sub_Word12(Word12 A, Word12 B)
 {
 	if (B & 0x800) {
-		B++;
+		//B++;
 	}
 	Word12 result = 0;
 	Word12 borrow = 0;
 
-	for (int i = 0; i < 12; ++i) {
+	for (int i = 0; i < 13; ++i) {
 		Word12 a_bit = (A >> i) & 1;
 		Word12 b_bit = (B >> i) & 1;
 
@@ -61,8 +61,14 @@ inline Word12 Sub_Word12(Word12 A, Word12 B)
 			borrow = 0;
 		}
 
-		//result |= (sub << i);
-		result |= ((Word12)diff << i);
+		if (i == 12) {
+			if (borrow > 0) {
+				result--; // end around carry
+			}
+		}
+		else {
+			result |= ((Word12)diff << i);
+		}
 		//if (sub & 0x1000) { // result is negative (since a < b + borrow)
 		//	sub += 2;     // +2 because it's in mod 2, so -1 becomes 1
 		//	borrow = 1;
