@@ -68,7 +68,7 @@ void add_print(Word12 A, Word12 B) {
 }
 int main()
 {
-	// validate subtraction. See page 12 and 33, respectively:
+	// validate subtraction. See pages 12 and 33, respectively:
 	// http://www.bitsavers.org/pdf/cdc/160/CDC160A/60014500G_CDC160A_Reference_Manual_196503.pdf
 	// https://ia802905.us.archive.org/12/items/bitsavers_cdc160023aingManual1960_4826291/023a_160_Computer_Programming_Manual_1960_text.pdf
 	
